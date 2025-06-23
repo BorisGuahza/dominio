@@ -61,6 +61,38 @@
       speechSynthesis.speak(voz);
     }
 
+    function corregirMultiplicaciones(expr) {
+      return expr
+        .replace(/([0-9])([a-zA-Z])/g, "$1*$2")
+        .replace(/([a-zA-Z])([0-9])/g, "$1*$2")
+        .replace(/([)])([a-zA-Z0-9])/g, "$1*$2")
+        .replace(/([0-9a-zA-Z])([(])/g, "$1*$2");
+    }
+
+    function dominio(expr) {
+      const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
+      let valores = [];
+      for (let i = -100; i <= 100; i += 1) {
+        try {
+          let val = f(i);
+          if (isFinite(val)) valores.push(i);
+        } catch {}
+      }
+      return valores.length > 0 ? `x ∈ [${Math.min(...valores)}, ${Math.max(...valores)}]` : "No definido";
+    }
+
+    function rango(expr) {
+      const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
+      let valores = [];
+      for (let i = -100; i <= 100; i += 1) {
+        try {
+          let val = f(i);
+          if (isFinite(val)) valores.push(val);
+        } catch {}
+      }
+      return valores.length > 0 ? `y ∈ [${Math.min(...valores).toFixed(2)}, ${Math.max(...valores).toFixed(2)}]` : "No definido";
+    }
+
     function graficar(expr) {
       const f = new Function("x", "return " + expr.replace(/x²/g, "x*x").replace(/\^/g, "**"));
       let x = [], y = [], asintotas = [];
@@ -108,20 +140,9 @@
       });
     }
 
-    function dominio(expr) {
-      const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
-      let valores = [];
-      for (let i = -100; i <= 100; i += 1) {
-        try {
-          let val = f(i);
-          if (isFinite(val)) valores.push(i);
-        } catch {}
-      }
-      return valores.length > 0 ? `x ∈ [${Math.min(...valores)}, ${Math.max(...valores)}]` : "No definido";
-    }
-
     function resolver() {
-      const input = document.getElementById("entrada").value.trim().replace(/\s+/g, "");
+      const raw = document.getElementById("entrada").value.trim().replace(/\s+/g, "");
+      const input = corregirMultiplicaciones(raw);
       const resultado = document.getElementById("resultado");
       resultado.innerHTML = "";
       Plotly.purge("grafica");
@@ -135,15 +156,16 @@
           const izquierda = match[1], operador = match[2], derecha = match[3];
           const expr = `(${izquierda}) - (${derecha})`;
           const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
-          let a = f(1), b = f(-1), sol = "";
-          if (a * b < 0) sol = "Tiene solución (cambia de signo)";
-          else sol = "No cambia de signo — solución en extremos o nula";
+          let a = f(1), b = f(-1), sol = (a * b < 0)
+            ? "Tiene solución (cambia de signo)"
+            : "No cambia de signo — puede no tener solución";
 
           resultado.innerHTML = `
-            <p><strong>Desigualdad:</strong> ${input}</p>
+            <p><strong>Desigualdad:</strong> ${raw}</p>
             <p><strong>Análisis:</strong> ${sol}</p>
-            <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
-          decir(`Resolviendo la desigualdad, ${sol}`);
+            <p><strong>Dominio:</strong> ${dominio(expr)}</p>
+            <p><strong>Rango:</strong> ${rango(expr)}</p>`;
+          decir(`Resolviendo la desigualdad: ${sol}`);
           graficar(expr);
 
         } else if (igualdadRegex.test(input)) {
@@ -152,17 +174,18 @@
           const expr = `(${izquierda}) - (${derecha})`;
           const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
 
-          // Aproximación de raíces
           let soluciones = [];
           for (let x = -100; x <= 100; x += 0.1) {
-            if (Math.abs(f(x)) < 0.1) soluciones.push(x.toFixed(2));
+            if (Math.abs(f(x)) < 0.1) soluciones.push(Number(x.toFixed(2)));
           }
-          soluciones = [...new Set(soluciones)];
+          soluciones = [...new Set(soluciones)].sort((a, b) => a - b);
+
           resultado.innerHTML = `
-            <p><strong>Ecuación:</strong> ${input}</p>
+            <p><strong>Ecuación:</strong> ${raw}</p>
             <p><strong>Solución(es) aproximada(s):</strong> ${soluciones.join(", ")}</p>
-            <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
-          decir(`Las soluciones aproximadas son: ${soluciones.join(", ")}`);
+            <p><strong>Dominio:</strong> ${dominio(expr)}</p>
+            <p><strong>Rango:</strong> ${rango(expr)}</p>`;
+          decir(`Soluciones aproximadas: ${soluciones.join(", ")}`);
           graficar(expr);
 
         } else if (!input.includes("x")) {
@@ -171,8 +194,10 @@
           decir(`El resultado es ${val}`);
         } else {
           const expr = input.replace(/^y=/, "");
-          resultado.innerHTML = `<p><strong>Función:</strong> y = ${expr}</p>
-                                 <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
+          resultado.innerHTML = `
+            <p><strong>Función:</strong> y = ${expr}</p>
+            <p><strong>Dominio:</strong> ${dominio(expr)}</p>
+            <p><strong>Rango:</strong> ${rango(expr)}</p>`;
           decir(`Graficando la función y = ${expr}`);
           graficar(expr);
         }
