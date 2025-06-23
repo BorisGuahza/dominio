@@ -8,10 +8,13 @@
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #f5f8fa;
-      padding: 40px;
-      max-width: 900px;
-      margin: auto;
       color: #2c3e50;
+      padding: 40px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      color: #34495e;
     }
     input, button {
       width: 100%;
@@ -30,105 +33,127 @@
       background-color: #27ae60;
     }
     .resultado {
+      background: #ffffff;
       margin-top: 25px;
       padding: 20px;
-      background: white;
       border-radius: 10px;
       box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     }
-    .error { color: red; font-weight: bold; }
-    #grafica { margin-top: 40px; }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    #grafica {
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
 
 <h1>🤖 Calculadora Inteligente</h1>
-<p>Ingresa una expresión como:<br>
-<code>y=2/(x-2)</code>, <code>y=Math.log(x)</code>, <code>y=x^2</code></p>
+<p>Ejemplos: <code>2x+3=7</code> — <code>x^2 - 4 &gt; 0</code> — <code>y=2/(x-1)</code> — <code>log(x)+3</code> — <code>√(x+2)</code></p>
 
-<input type="text" id="input" placeholder="Escribe tu función (ej. y=2/(x-2))">
-<button onclick="procesarEntrada()">Resolver</button>
+<input type="text" id="entrada" placeholder="Escribe una función, ecuación o desigualdad">
+<button onclick="resolver()">Resolver</button>
 
-<div class="resultado" id="salida"></div>
+<div class="resultado" id="resultado"></div>
 <div id="grafica"></div>
 
 <script>
-  function decir(texto) {
-    const voz = new SpeechSynthesisUtterance(texto);
-    voz.lang = "es-ES";
-    speechSynthesis.speak(voz);
+function decir(texto) {
+  const voz = new SpeechSynthesisUtterance(texto);
+  voz.lang = "es-ES";
+  speechSynthesis.speak(voz);
+}
+
+function mostrarAsintotasVerticales(exprFn, xRange = [-20, 20]) {
+  const asintotas = [];
+  for (let i = xRange[0]; i <= xRange[1]; i += 0.1) {
+    try {
+      let y = exprFn(i);
+      if (!isFinite(y)) asintotas.push(parseFloat(i.toFixed(2)));
+    } catch {
+      asintotas.push(parseFloat(i.toFixed(2)));
+    }
   }
+  return [...new Set(asintotas)];
+}
 
-  function procesarEntrada() {
-    const entrada = document.getElementById("input").value.trim();
-    const salida = document.getElementById("salida");
-    const expr = entrada.replace(/\^/g, "**").replace(/x²/g, "x*x");
+function graficar(expr, label = "f(x)") {
+  const safeExpr = expr
+    .replace(/x\^2/g, "Math.pow(x,2)")
+    .replace(/√\(/g, "Math.sqrt(")
+    .replace(/log\(/g, "Math.log10(")
+    .replace(/ln\(/g, "Math.log(");
 
-    Plotly.purge("grafica");
-    salida.innerHTML = "";
-
-    if (!entrada.toLowerCase().startsWith("y=")) {
-      salida.innerHTML = `<div class="error">❌ Ingresa una función válida como y = 2/(x - 2)</div>`;
-      decir("Debes escribir una función como y igual a algo.");
-      return;
+  try {
+    const f = new Function("x", "return " + safeExpr);
+    const x = [], y = [];
+    for (let i = -20; i <= 20; i += 0.1) {
+      x.push(i);
+      try { y.push(f(i)); } catch { y.push(null); }
     }
 
-    const funcion = expr.split("=")[1];
-    const f = new Function("x", `return ${funcion};`);
-    const x = [], y = [], asintotas = new Set(), yEstimada = [];
-
-    for (let i = -50; i <= 50; i += 0.2) {
-      const xi = parseFloat(i.toFixed(3));
-      try {
-        const yi = f(xi);
-        if (!isFinite(yi)) {
-          y.push(null);
-          asintotas.add(xi.toFixed(3));
-        } else {
-          x.push(xi);
-          y.push(yi);
-          yEstimada.push(yi);
-        }
-      } catch {
-        y.push(null);
-        asintotas.add(xi.toFixed(3));
-      }
-    }
-
-    const trazos = [{
-      x: x,
-      y: y,
-      mode: 'lines',
-      name: `f(x)`,
-      line: { color: '#3498db' }
+    const data = [{
+      x, y,
+      mode: "lines",
+      name: label,
+      line: { color: "#2980b9" }
     }];
 
-    // Trazar asíntotas detectadas automáticamente
-    asintotas.forEach(xa => {
-      trazos.push({
-        x: [xa, xa],
-        y: [-100, 100],
-        mode: 'lines',
-        name: `Asíntota x = ${xa}`,
-        line: { dash: 'dot', color: '#e74c3c' }
+    const asintotas = mostrarAsintotasVerticales(f);
+    asintotas.forEach(val => {
+      data.push({
+        x: [val, val],
+        y: [-20, 20],
+        mode: "lines",
+        name: `Asíntota x = ${val}`,
+        line: { dash: "dot", color: "#e74c3c" }
       });
     });
 
-    const ymin = Math.min(...yEstimada).toFixed(2);
-    const ymax = Math.max(...yEstimada).toFixed(2);
-    const dominio = asintotas.size > 0 ? `x ∈ ℝ, excepto en: ${Array.from(asintotas).join(", ")}` : "x ∈ ℝ";
-    const rango = `y ∈ [${ymin}, ${ymax}] (estimado)`;
-
-    Plotly.newPlot("grafica", trazos, {
+    Plotly.newPlot("grafica", data, {
       title: "Gráfica de la función",
-      xaxis: { title: "x", range: [-10, 10] },
-      yaxis: { title: "f(x)", range: [-10, 10] }
+      xaxis: { title: "x" },
+      yaxis: { title: "f(x)" }
     });
 
-    const mensaje = `✅ Función graficada. Dominio: ${dominio}. Rango: ${rango}`;
-    salida.innerHTML = `<div>${mensaje}</div>`;
-    decir("La gráfica fue generada correctamente. Consulta el dominio y rango en pantalla.");
+    return asintotas;
+
+  } catch (e) {
+    console.error("Error al graficar:", e);
+    return [];
   }
+}
+
+function resolver() {
+  const entrada = document.getElementById("entrada").value.trim();
+  const resultado = document.getElementById("resultado");
+  resultado.innerHTML = "";
+  Plotly.purge("grafica");
+
+  try {
+    let mensaje = "";
+    if (/y\s*=\s*/.test(entrada)) {
+      const expr = entrada.split("=")[1];
+      const asintotas = graficar(expr, entrada);
+      mensaje = `Se ha graficado la función ${entrada}.`;
+      if (asintotas.length > 0) {
+        mensaje += ` Asíntotas verticales en: x = ${asintotas.join(", ")}`;
+      }
+    } else if (/=|<|>/.test(entrada)) {
+      mensaje = `Resolución de ecuaciones y desigualdades aún en desarrollo visual.`;
+    } else {
+      const valor = eval(entrada);
+      mensaje = `El resultado de la expresión es: ${valor}`;
+    }
+    resultado.innerHTML = `<p>🤖 ${mensaje}</p>`;
+    decir(mensaje);
+  } catch (e) {
+    resultado.innerHTML = `<p class="error">❌ Ingresa una función válida como y = 2/(x-2)</p>`;
+    decir("Hubo un error al procesar tu función");
+  }
+}
 </script>
 
 </body>
