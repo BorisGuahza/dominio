@@ -1,21 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Calculadora Inteligente</title>
+  <meta charset="UTF-8">
+  <title>Calculadora Completa Inteligente</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f5f8fa;
+      background: #f4f9fb;
       color: #2c3e50;
-      padding: 40px;
       max-width: 800px;
       margin: auto;
+      padding: 30px;
     }
-    h1 {
-      color: #34495e;
-    }
+    h1 { color: #2c3e50; }
     input, button {
       width: 100%;
       padding: 12px;
@@ -23,138 +21,166 @@
       margin-top: 10px;
     }
     button {
-      background-color: #2ecc71;
+      background: #2ecc71;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #27ae60;
+      background: #27ae60;
     }
     .resultado {
-      background: #ffffff;
-      margin-top: 25px;
-      padding: 20px;
+      background: #fff;
+      margin-top: 20px;
+      padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    #grafica {
+      margin-top: 30px;
     }
     .error {
       color: red;
       font-weight: bold;
     }
-    #grafica {
-      margin-top: 30px;
-    }
   </style>
 </head>
 <body>
+  <h1>🤖 Calculadora Completa Inteligente</h1>
+  <p>Escribe una expresión como: <code>2x + 3 = 7</code>, <code>x² - 4 ≥ 0</code>, <code>2/(x-2)</code>, <code>5 + 2 * 3</code></p>
+  <input type="text" id="entrada" placeholder="Ej: 2x - 5 < 3">
+  <button onclick="resolver()">Resolver</button>
+  <div class="resultado" id="resultado"></div>
+  <div id="grafica"></div>
 
-<h1>🤖 Calculadora Inteligente</h1>
-<p>Ejemplos: <code>2x+3=7</code> — <code>x^2 - 4 &gt; 0</code> — <code>y=2/(x-1)</code> — <code>log(x)+3</code> — <code>√(x+2)</code></p>
-
-<input type="text" id="entrada" placeholder="Escribe una función, ecuación o desigualdad">
-<button onclick="resolver()">Resolver</button>
-
-<div class="resultado" id="resultado"></div>
-<div id="grafica"></div>
-
-<script>
-function decir(texto) {
-  const voz = new SpeechSynthesisUtterance(texto);
-  voz.lang = "es-ES";
-  speechSynthesis.speak(voz);
-}
-
-function mostrarAsintotasVerticales(exprFn, xRange = [-20, 20]) {
-  const asintotas = [];
-  for (let i = xRange[0]; i <= xRange[1]; i += 0.1) {
-    try {
-      let y = exprFn(i);
-      if (!isFinite(y)) asintotas.push(parseFloat(i.toFixed(2)));
-    } catch {
-      asintotas.push(parseFloat(i.toFixed(2)));
-    }
-  }
-  return [...new Set(asintotas)];
-}
-
-function graficar(expr, label = "f(x)") {
-  const safeExpr = expr
-    .replace(/x\^2/g, "Math.pow(x,2)")
-    .replace(/√\(/g, "Math.sqrt(")
-    .replace(/log\(/g, "Math.log10(")
-    .replace(/ln\(/g, "Math.log(");
-
-  try {
-    const f = new Function("x", "return " + safeExpr);
-    const x = [], y = [];
-    for (let i = -20; i <= 20; i += 0.1) {
-      x.push(i);
-      try { y.push(f(i)); } catch { y.push(null); }
+  <script>
+    function decir(texto) {
+      const voz = new SpeechSynthesisUtterance(texto);
+      voz.lang = "es-ES";
+      speechSynthesis.speak(voz);
     }
 
-    const data = [{
-      x, y,
-      mode: "lines",
-      name: label,
-      line: { color: "#2980b9" }
-    }];
+    function graficar(expr) {
+      const f = new Function("x", "return " + expr.replace(/x²/g, "x*x").replace(/\^/g, "**"));
+      let x = [], y = [], asintotas = [];
 
-    const asintotas = mostrarAsintotasVerticales(f);
-    asintotas.forEach(val => {
-      data.push({
-        x: [val, val],
-        y: [-20, 20],
-        mode: "lines",
-        name: `Asíntota x = ${val}`,
-        line: { dash: "dot", color: "#e74c3c" }
-      });
-    });
-
-    Plotly.newPlot("grafica", data, {
-      title: "Gráfica de la función",
-      xaxis: { title: "x" },
-      yaxis: { title: "f(x)" }
-    });
-
-    return asintotas;
-
-  } catch (e) {
-    console.error("Error al graficar:", e);
-    return [];
-  }
-}
-
-function resolver() {
-  const entrada = document.getElementById("entrada").value.trim();
-  const resultado = document.getElementById("resultado");
-  resultado.innerHTML = "";
-  Plotly.purge("grafica");
-
-  try {
-    let mensaje = "";
-    if (/y\s*=\s*/.test(entrada)) {
-      const expr = entrada.split("=")[1];
-      const asintotas = graficar(expr, entrada);
-      mensaje = `Se ha graficado la función ${entrada}.`;
-      if (asintotas.length > 0) {
-        mensaje += ` Asíntotas verticales en: x = ${asintotas.join(", ")}`;
+      for (let i = -20; i <= 20; i += 0.1) {
+        x.push(i);
+        try {
+          let val = f(i);
+          if (!isFinite(val)) {
+            y.push(null);
+            asintotas.push(i.toFixed(2));
+          } else {
+            y.push(val);
+          }
+        } catch {
+          y.push(null);
+          asintotas.push(i.toFixed(2));
+        }
       }
-    } else if (/=|<|>/.test(entrada)) {
-      mensaje = `Resolución de ecuaciones y desigualdades aún en desarrollo visual.`;
-    } else {
-      const valor = eval(entrada);
-      mensaje = `El resultado de la expresión es: ${valor}`;
-    }
-    resultado.innerHTML = `<p>🤖 ${mensaje}</p>`;
-    decir(mensaje);
-  } catch (e) {
-    resultado.innerHTML = `<p class="error">❌ Ingresa una función válida como y = 2/(x-2)</p>`;
-    decir("Hubo un error al procesar tu función");
-  }
-}
-</script>
 
+      let trazos = [{
+        x: x,
+        y: y,
+        mode: 'lines',
+        name: 'f(x)',
+        line: { color: '#2980b9' }
+      }];
+
+      asintotas = [...new Set(asintotas)];
+      asintotas.forEach(a => {
+        trazos.push({
+          x: [a, a],
+          y: [-20, 20],
+          mode: 'lines',
+          name: `Asíntota x = ${a}`,
+          line: { dash: 'dot', color: '#e74c3c' }
+        });
+      });
+
+      Plotly.newPlot("grafica", trazos, {
+        title: "Gráfica de la función",
+        xaxis: { title: "x", range: [-10, 10] },
+        yaxis: { title: "f(x)", range: [-10, 10] },
+        margin: { t: 40 }
+      });
+    }
+
+    function dominio(expr) {
+      const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
+      let valores = [];
+      for (let i = -100; i <= 100; i += 1) {
+        try {
+          let val = f(i);
+          if (isFinite(val)) valores.push(i);
+        } catch {}
+      }
+      return valores.length > 0 ? `x ∈ [${Math.min(...valores)}, ${Math.max(...valores)}]` : "No definido";
+    }
+
+    function resolver() {
+      const input = document.getElementById("entrada").value.trim().replace(/\s+/g, "");
+      const resultado = document.getElementById("resultado");
+      resultado.innerHTML = "";
+      Plotly.purge("grafica");
+
+      const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
+      const igualdadRegex = /(.+)=([^=]+)/;
+
+      try {
+        if (desigualdadRegex.test(input)) {
+          const match = input.match(desigualdadRegex);
+          const izquierda = match[1], operador = match[2], derecha = match[3];
+          const expr = `(${izquierda}) - (${derecha})`;
+          const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
+          let a = f(1), b = f(-1), sol = "";
+          if (a * b < 0) sol = "Tiene solución (cambia de signo)";
+          else sol = "No cambia de signo — solución en extremos o nula";
+
+          resultado.innerHTML = `
+            <p><strong>Desigualdad:</strong> ${input}</p>
+            <p><strong>Análisis:</strong> ${sol}</p>
+            <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
+          decir(`Resolviendo la desigualdad, ${sol}`);
+          graficar(expr);
+
+        } else if (igualdadRegex.test(input)) {
+          const match = input.match(igualdadRegex);
+          const izquierda = match[1], derecha = match[2];
+          const expr = `(${izquierda}) - (${derecha})`;
+          const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
+
+          // Aproximación de raíces
+          let soluciones = [];
+          for (let x = -100; x <= 100; x += 0.1) {
+            if (Math.abs(f(x)) < 0.1) soluciones.push(x.toFixed(2));
+          }
+          soluciones = [...new Set(soluciones)];
+          resultado.innerHTML = `
+            <p><strong>Ecuación:</strong> ${input}</p>
+            <p><strong>Solución(es) aproximada(s):</strong> ${soluciones.join(", ")}</p>
+            <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
+          decir(`Las soluciones aproximadas son: ${soluciones.join(", ")}`);
+          graficar(expr);
+
+        } else if (!input.includes("x")) {
+          const val = eval(input);
+          resultado.innerHTML = `<p><strong>Resultado:</strong> ${val}</p>`;
+          decir(`El resultado es ${val}`);
+        } else {
+          const expr = input.replace(/^y=/, "");
+          resultado.innerHTML = `<p><strong>Función:</strong> y = ${expr}</p>
+                                 <p><strong>Dominio:</strong> ${dominio(expr)}</p>`;
+          decir(`Graficando la función y = ${expr}`);
+          graficar(expr);
+        }
+      } catch (e) {
+        resultado.innerHTML = `<p class="error">❌ Error: ${e.message}</p>`;
+        decir("Hubo un error al procesar la expresión.");
+      }
+    }
+  </script>
 </body>
 </html>
