@@ -5,30 +5,48 @@
   <title>Resolución de Desigualdades</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       margin: 40px;
-      background: #f7f7f7;
+      background: #f0f4f8;
       color: #333;
     }
+    h1 {
+      color: #2c3e50;
+    }
     input, button {
-      padding: 10px;
+      padding: 12px;
       margin-top: 10px;
       font-size: 16px;
       width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
     }
     #resultado {
       margin-top: 20px;
-      font-weight: bold;
+      font-weight: normal;
+      background: white;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
     }
   </style>
 </head>
 <body>
 
-  <h1>Resolver Desigualdades Lineales y Cuadráticas</h1>
-  <p>Escribe una desigualdad como: <br><strong>2x + 3 &lt; 5</strong> o <strong>x² - 3x + 2 &gt; 0</strong></p>
+  <h1>Resuelve Desigualdades Lineales o Cuadráticas</h1>
+  <p>Ejemplos: <strong>2x + 3 &lt; 5</strong> — <strong>x² - 3x + 2 &gt; 0</strong></p>
 
   <input type="text" id="desigualdad" placeholder="Ingresa tu desigualdad aquí">
-  <button onclick="resolverDesigualdad()">Resolver</button>
+  <button onclick="resolverDesigualdad()">🔍 Resolver</button>
 
   <div id="resultado"></div>
 
@@ -39,16 +57,13 @@
 
       try {
         const match = entrada.match(/(.+)(<=|>=|<|>)(.+)/);
-        if (!match) throw "Formato inválido";
+        if (!match) throw "Formato inválido. Usa símbolos como <, >, ≤, ≥";
 
         const izquierda = match[1];
         const operador = match[2];
         const derecha = match[3];
-
-        // Reescribimos como expresión = 0
         const expr = `(${izquierda}) - (${derecha})`;
 
-        // Evaluamos el tipo de desigualdad
         if (expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/)) {
           resolverCuadratica(expr, operador, resultado);
         } else {
@@ -63,33 +78,37 @@
     function resolverLineal(expr, operador, resultado) {
       const re = /([-+]?\d*\.?\d*)x/;
       const match = expr.match(re);
-      const a = parseFloat(match[1] || 1);
+      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
       const b = eval(expr.replace(re, ""));
 
       let x;
+      let mensaje = "";
+
       if (a === 0) {
-        if (eval(`${b} ${operador} 0`)) {
-          resultado.innerHTML = "✅ La desigualdad se cumple para todo x ∈ ℝ";
+        if (eval(`0 ${operador} ${b}`)) {
+          mensaje = "✅ Se cumple para todo x ∈ ℝ";
         } else {
-          resultado.innerHTML = "❌ La desigualdad no tiene solución";
+          mensaje = "❌ No hay solución";
         }
-        return;
+      } else {
+        x = -b / a;
+        const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
+        mensaje = `✅ Solución: ${signos[operador]}${x}<br>📌 Dominio: ℝ`;
       }
 
-      x = -b / a;
-      const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
-      resultado.innerHTML = `✅ Solución: ${signos[operador]}${x}`;
+      resultado.innerHTML = mensaje;
     }
 
     function resolverCuadratica(expr, operador, resultado) {
-      // Obtener coeficientes a, b, c
       const e = expr.replace(/x\^2/g, "x*x").replace(/x²/g, "x*x");
       const func = new Function("x", `return ${e};`);
-      const a = func(1) - 2*func(0.5) + func(0);
-      const b = (func(1) - func(-1)) / 2;
-      const c = func(0);
 
-      const D = b*b - 4*a*c;
+      const f0 = func(0), f1 = func(1), f_1 = func(-1);
+      const a = f1 - 2 * f0 + f_1;
+      const b = (f1 - f_1) / 2;
+      const c = f0;
+
+      const D = b * b - 4 * a * c;
       let sol = "";
 
       if (D < 0) {
@@ -99,15 +118,15 @@
           sol = "No hay solución real";
         }
       } else if (D === 0) {
-        const r = -b / (2*a);
+        const r = -b / (2 * a);
         if (operador === ">" || operador === "<") {
           sol = `x ∈ ℝ, x ≠ ${r}`;
         } else {
           sol = `x = ${r}`;
         }
       } else {
-        const r1 = (-b + Math.sqrt(D)) / (2*a);
-        const r2 = (-b - Math.sqrt(D)) / (2*a);
+        const r1 = (-b + Math.sqrt(D)) / (2 * a);
+        const r2 = (-b - Math.sqrt(D)) / (2 * a);
         const [min, max] = [Math.min(r1, r2), Math.max(r1, r2)];
 
         if (a > 0) {
@@ -123,7 +142,7 @@
         }
       }
 
-      resultado.innerHTML = `✅ Solución: ${sol}`;
+      resultado.innerHTML = `✅ Solución: ${sol}<br>📌 Dominio: ℝ`;
     }
   </script>
 
