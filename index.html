@@ -100,36 +100,34 @@
     }
 
     function obtenerAsintotas(expr) {
+      const partes = expr.split('/');
+      if (partes.length < 2) return [];
+
+      const denominadorExpr = partes.slice(1).join('/');
+      const f = new Function("x", "return " + denominadorExpr.replace(/\^/g, "**"));
+
       let asintotas = [];
-      const tokens = expr.split('/');
-      if (tokens.length === 2) {
-        const denominador = tokens[1].split(/[+\-*/]/)[0]; // toma parte inicial
+      for (let i = -100; i <= 100; i += 0.1) {
         try {
-          const f = new Function("x", "return " + denominador.replace(/\^/g, "**"));
-          for (let x = -100; x <= 100; x += 0.1) {
-            const val = f(x);
-            if (Math.abs(val) < 0.05) {
-              asintotas.push(formatoNumero(x));
-            }
+          if (Math.abs(f(i)) < 0.01) {
+            asintotas.push(Number(i.toFixed(2)));
           }
         } catch {}
       }
-      return [...new Set(asintotas)];
+      return [...new Set(asintotas.map(formatoNumero))];
     }
 
-    function graficar(expr) {
+    function graficar(expr, soluciones = []) {
       const f = new Function("x", "return " + expr.replace(/x²/g, "x*x").replace(/\^/g, "**"));
-      let x = [], y = [], discontinuos = [];
+      let x = [], y = [];
 
       for (let i = -20; i <= 20; i += 0.1) {
         x.push(i);
         try {
           let val = f(i);
           y.push(isFinite(val) ? val : null);
-          if (!isFinite(val)) discontinuos.push(i.toFixed(2));
         } catch {
           y.push(null);
-          discontinuos.push(i.toFixed(2));
         }
       }
 
@@ -149,6 +147,16 @@
           mode: 'lines',
           name: `Asíntota x = ${a}`,
           line: { dash: 'dot', color: '#e74c3c' }
+        });
+      });
+
+      soluciones.forEach(sol => {
+        trazos.push({
+          x: [sol],
+          y: [0],
+          mode: 'markers',
+          name: `Solución: x = ${formatoNumero(sol)}`,
+          marker: { color: 'green', size: 10, symbol: 'circle' }
         });
       });
 
@@ -192,10 +200,10 @@
           const izquierda = match[1], derecha = match[2];
           const expr = `(${izquierda}) - (${derecha})`;
           const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
-          let soluciones = [];
 
+          let soluciones = [];
           for (let x = -100; x <= 100; x += 0.1) {
-            if (Math.abs(f(x)) < 0.01) {
+            if (Math.abs(f(x)) < 0.001) {
               soluciones.push(Number(x.toFixed(4)));
             }
           }
@@ -209,7 +217,7 @@
             <p><strong>Dominio:</strong> ${dominio(expr)}</p>
             <p><strong>Rango:</strong> ${rango(expr)}</p>`;
           decir(`Solución: ${exacta}`);
-          graficar(expr);
+          graficar(expr, soluciones);
 
         } else if (!input.includes("x")) {
           const val = eval(input);
