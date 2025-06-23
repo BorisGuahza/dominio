@@ -2,79 +2,98 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Resolución de Desigualdades</title>
+  <title>Desigualdades Lineales y Cuadráticas</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      margin: 40px;
-      background: #f0f4f8;
-      color: #333;
-    }
-    h1 {
+      background: #f5f8fa;
       color: #2c3e50;
+      padding: 40px;
+      max-width: 800px;
+      margin: auto;
     }
+
+    h1 {
+      color: #34495e;
+      margin-bottom: 10px;
+    }
+
     input, button {
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
       width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 10px;
       box-sizing: border-box;
     }
+
     button {
-      background-color: #3498db;
+      background-color: #2ecc71;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 5px;
       cursor: pointer;
     }
+
     button:hover {
-      background-color: #2980b9;
+      background-color: #27ae60;
     }
-    #resultado {
-      margin-top: 20px;
-      font-weight: normal;
-      background: white;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+
+    .resultado {
+      background: #ffffff;
+      margin-top: 25px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     }
-    p {
-      font-size: 16px;
+
+    .item {
+      margin-bottom: 15px;
+    }
+
+    .item span {
+      font-weight: bold;
+    }
+
+    .error {
+      color: red;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-  <h1>Resuelve Desigualdades Lineales o Cuadráticas</h1>
-  <p>Ejemplos: <strong>2x + 3 &lt; 5</strong> — <strong>x² - 3x + 2 &gt; 0</strong></p>
+  <h1>🔎 Calculadora de Desigualdades</h1>
+  <p>Escribe una desigualdad, por ejemplo: <code>x² - 4 &gt; 0</code> o <code>2x + 5 ≤ 9</code></p>
 
-  <input type="text" id="desigualdad" placeholder="Ingresa tu desigualdad aquí">
-  <button onclick="resolverDesigualdad()">🔍 Resolver</button>
+  <input type="text" id="desigualdad" placeholder="Ej: x² - 4 > 0">
+  <button onclick="resolverDesigualdad()">Resolver</button>
 
-  <div id="resultado"></div>
+  <div class="resultado" id="resultado"></div>
 
   <script>
     function resolverDesigualdad() {
       const entrada = document.getElementById("desigualdad").value.replace(/\s+/g, "");
       const resultado = document.getElementById("resultado");
+      resultado.innerHTML = ""; // limpiar
 
       try {
         const match = entrada.match(/(.+)(<=|>=|<|>)(.+)/);
-        if (!match) throw "Formato inválido. Usa símbolos como <, >, ≤, ≥";
+        if (!match) throw "Formato inválido. Usa <, >, <= o >=";
 
         const izquierda = match[1];
         const operador = match[2];
         const derecha = match[3];
         const expr = `(${izquierda}) - (${derecha})`;
 
-        if (expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/)) {
+        const contieneCuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+        if (contieneCuadratica) {
           resolverCuadratica(expr, operador, resultado);
         } else {
           resolverLineal(expr, operador, resultado);
         }
 
       } catch (e) {
-        resultado.innerHTML = "❌ Error: " + e;
+        resultado.innerHTML = `<p class="error">❌ Error: ${e}</p>`;
       }
     }
 
@@ -84,29 +103,27 @@
       const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
       const b = eval(expr.replace(re, ""));
 
-      let x;
-      let mensaje = "";
-
+      let x, mensaje;
       if (a === 0) {
-        if (eval(`0 ${operador} ${b}`)) {
-          mensaje = "✅ Se cumple para todo x ∈ ℝ";
-        } else {
-          mensaje = "❌ No hay solución";
-        }
+        mensaje = eval(`0 ${operador} ${b}`) ?
+          "Se cumple para todo x ∈ ℝ" : "No hay solución";
       } else {
         x = -b / a;
         const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
-        mensaje = `✅ Solución: ${signos[operador]}${x}<br>📌 Dominio: ℝ`;
+        mensaje = `${signos[operador]}${x}`;
       }
 
-      resultado.innerHTML = mensaje;
+      resultado.innerHTML = `
+        <div class="item">✅ <span>Solución:</span> ${mensaje}</div>
+        <div class="item">📌 <span>Dominio:</span> ℝ</div>
+        <div class="item">🎯 <span>Rango:</span> No aplica (es desigualdad lineal)</div>
+      `;
     }
 
     function resolverCuadratica(expr, operador, resultado) {
       const e = expr.replace(/x\^2/g, "x*x").replace(/x²/g, "x*x");
-      const func = new Function("x", `return ${e};`);
-
-      const f0 = func(0), f1 = func(1), f_1 = func(-1);
+      const f = new Function("x", `return ${e};`);
+      const f0 = f(0), f1 = f(1), f_1 = f(-1);
       const a = f1 - 2 * f0 + f_1;
       const b = (f1 - f_1) / 2;
       const c = f0;
@@ -115,18 +132,12 @@
       let sol = "";
 
       if (D < 0) {
-        if ((a > 0 && operador === ">") || (a < 0 && operador === "<")) {
-          sol = "x ∈ ℝ";
-        } else {
-          sol = "No hay solución real";
-        }
+        sol = ((a > 0 && operador === ">") || (a < 0 && operador === "<")) ?
+          "x ∈ ℝ" : "No hay solución real";
       } else if (D === 0) {
         const r = -b / (2 * a);
-        if (operador === ">" || operador === "<") {
-          sol = `x ∈ ℝ, x ≠ ${r}`;
-        } else {
-          sol = `x = ${r}`;
-        }
+        sol = (operador === ">" || operador === "<") ?
+          `x ∈ ℝ, x ≠ ${r}` : `x = ${r}`;
       } else {
         const r1 = (-b + Math.sqrt(D)) / (2 * a);
         const r2 = (-b - Math.sqrt(D)) / (2 * a);
@@ -145,7 +156,16 @@
         }
       }
 
-      resultado.innerHTML = `✅ Solución: ${sol}<br>📌 Dominio: ℝ`;
+      // Calcular vértice para estimar el rango
+      const xv = -b / (2 * a);
+      const yv = a * xv * xv + b * xv + c;
+      const rango = (a > 0) ? `[${yv}, ∞)` : `(-∞, ${yv}]`;
+
+      resultado.innerHTML = `
+        <div class="item">✅ <span>Solución:</span> ${sol}</div>
+        <div class="item">📌 <span>Dominio:</span> ℝ</div>
+        <div class="item">🎯 <span>Rango aproximado:</span> ${rango}</div>
+      `;
     }
   </script>
 
