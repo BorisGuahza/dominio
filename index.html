@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Calculadora de Ecuaciones y Desigualdades</title>
+  <title>Calculadora Todo en Uno</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
@@ -13,12 +13,12 @@
       max-width: 800px;
       margin: auto;
     }
+    h1 { color: #34495e; }
     input, button {
       width: 100%;
       padding: 12px;
       font-size: 16px;
       margin-top: 10px;
-      box-sizing: border-box;
     }
     button {
       background-color: #2ecc71;
@@ -27,6 +27,7 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    button:hover { background-color: #27ae60; }
     .resultado {
       background: #ffffff;
       margin-top: 25px;
@@ -34,107 +35,126 @@
       border-radius: 10px;
       box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     }
-    .item {
-      margin-bottom: 15px;
-    }
-    .error {
-      color: red;
-      font-weight: bold;
-    }
-    #grafica {
-      margin-top: 30px;
-    }
+    .item { margin-bottom: 15px; }
+    .error { color: red; font-weight: bold; }
+    #grafica { margin-top: 30px; }
   </style>
 </head>
 <body>
 
-  <h1>🤖 Calculadora Inteligente</h1>
-  <input type="text" id="desigualdad" placeholder="Escribe tu ecuación, desigualdad o función (ej: y=2/(x-2))" />
-  <button onclick="resolver()">Resolver</button>
-  <div class="resultado" id="resultado"></div>
-  <div id="grafica"></div>
+<h1>🤖 Calculadora Todo en Uno</h1>
+<p>Ejemplos: <code>2x + 3 = 7</code> — <code>x² - 4 ≥ 0</code> — <code>1/(x - 2)</code> — <code>5 + 3 * 2</code></p>
 
-  <script>
-    function decir(texto) {
-      const voz = new SpeechSynthesisUtterance(texto);
-      voz.lang = "es-ES";
-      speechSynthesis.speak(voz);
+<input type="text" id="entrada" placeholder="Escribe tu expresión, ecuación o desigualdad">
+<button onclick="resolver()">Resolver</button>
+
+<div class="resultado" id="resultado"></div>
+<div id="grafica"></div>
+
+<script>
+  function decir(texto) {
+    const voz = new SpeechSynthesisUtterance(texto);
+    voz.lang = "es-ES";
+    speechSynthesis.speak(voz);
+  }
+
+  function hablaBot(tipo, datos) {
+    switch (tipo) {
+      case "expresionNumerica": return `Eso es solo una expresión. El resultado es: ${datos}`;
+      case "faltaOperador": return `Parece que olvidaste escribir un signo de igualdad o desigualdad.`;
+      case "error": return `Ups... algo no salió bien. Revisa tu expresión.`;
+      case "resolver": return `Resolviendo: ${datos}`;
+      default: return datos;
+    }
+  }
+
+  function graficar(expr) {
+    const f = new Function("x", "return " + expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x"));
+    const x = [], y = [], asintotas = [];
+
+    for (let i = -20; i <= 20; i += 0.1) {
+      x.push(i);
+      try {
+        const val = f(i);
+        if (!isFinite(val)) {
+          y.push(null);
+          asintotas.push(i.toFixed(2));
+        } else {
+          y.push(val);
+        }
+      } catch {
+        y.push(null);
+        asintotas.push(i.toFixed(2));
+      }
     }
 
-    function resolver() {
-      const entradaRaw = document.getElementById("desigualdad").value.trim();
-      const entrada = entradaRaw.replace(/\s+/g, "");
-      const resultado = document.getElementById("resultado");
-      resultado.innerHTML = "";
-      Plotly.purge("grafica");
+    const trazos = [{
+      x: x, y: y, mode: 'lines', name: 'f(x)', line: { color: '#2ecc71' }
+    }];
 
-      // ✅ Detectar funciones del tipo y = ...
-      if (/^y=/.test(entrada)) {
-        const expr = entrada.replace(/^y=/, "");
+    [...new Set(asintotas)].forEach(a => {
+      trazos.push({
+        x: [a, a],
+        y: [-20, 20],
+        mode: 'lines',
+        name: `Asíntota x = ${a}`,
+        line: { dash: 'dot', color: '#e74c3c' }
+      });
+    });
+
+    Plotly.newPlot("grafica", trazos, {
+      title: "Gráfica de la función",
+      xaxis: { title: "x", range: [-10, 10] },
+      yaxis: { title: "f(x)", range: [-10, 10] }
+    });
+  }
+
+  function resolver() {
+    const entrada = document.getElementById("entrada").value.trim();
+    const resultado = document.getElementById("resultado");
+    resultado.innerHTML = "";
+    Plotly.purge("grafica");
+
+    const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
+    const igualdadRegex = /(.+)=([^=]+)/;
+
+    try {
+      if (desigualdadRegex.test(entrada)) {
+        const match = entrada.match(desigualdadRegex);
+        const izquierda = match[1], operador = match[2], derecha = match[3];
+        const expr = `(${izquierda}) - (${derecha})`;
         graficar(expr);
-        const mensaje = `Se ha graficado la función y = ${expr}`;
+        const mensaje = `Resolviendo la desigualdad ${entrada}`;
         resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
         decir(mensaje);
-        return;
-      }
-
-      // Aquí puedes incluir el resto de tu lógica para ecuaciones e inecuaciones si deseas
-      resultado.innerHTML = `<div class="item error">❌ Ingresa una función válida como y=2/(x-2)</div>`;
-      decir("No se pudo entender la expresión.");
-    }
-
-    function graficar(expr) {
-      const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
-      const x = [], y = [], asintotas = [];
-
-      for (let i = -20; i <= 20; i += 0.1) {
-        let valorX = parseFloat(i.toFixed(2));
-        x.push(valorX);
-        try {
-          const val = f(valorX);
-          if (!isFinite(val)) {
-            y.push(null);
-            asintotas.push(valorX);
-          } else {
-            y.push(val);
-          }
-        } catch {
-          y.push(null);
-          asintotas.push(valorX);
+      } else if (igualdadRegex.test(entrada)) {
+        const match = entrada.match(igualdadRegex);
+        const izquierda = match[1], derecha = match[2];
+        const expr = `(${izquierda}) - (${derecha})`;
+        graficar(expr);
+        const mensaje = `Resolviendo la ecuación ${entrada}`;
+        resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+        decir(mensaje);
+      } else {
+        if (entrada.includes("x")) {
+          const mensaje = hablaBot("faltaOperador");
+          resultado.innerHTML = `<div class="item error">🤖 ${mensaje}</div>`;
+          decir(mensaje);
+        } else {
+          const valor = eval(entrada);
+          const mensaje = hablaBot("expresionNumerica", valor);
+          resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+          decir(mensaje);
+          graficar(entrada);
         }
       }
-
-      const data = [{
-        x: x,
-        y: y,
-        mode: 'lines',
-        name: `y = ${expr}`,
-        line: { color: '#2980b9' }
-      }];
-
-      // Agregar líneas verticales (asíntotas)
-      const trazosAsintotas = [...new Set(asintotas.map(v => v.toFixed(2)))];
-      trazosAsintotas.forEach(valor => {
-        data.push({
-          x: [valor, valor],
-          y: [-50, 50],
-          mode: 'lines',
-          line: {
-            color: 'red',
-            dash: 'dot'
-          },
-          name: `Asíntota x = ${valor}`
-        });
-      });
-
-      Plotly.newPlot("grafica", data, {
-        title: 'Gráfica de la función',
-        xaxis: { title: 'x' },
-        yaxis: { title: 'y' }
-      });
+    } catch (e) {
+      const mensaje = hablaBot("error");
+      resultado.innerHTML = `<div class="item error">🤖 ${mensaje}</div>`;
+      decir(mensaje);
     }
-  </script>
+  }
+</script>
 
 </body>
 </html>
-
