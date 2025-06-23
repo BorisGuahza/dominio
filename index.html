@@ -62,7 +62,7 @@
     }
 
     function formatoNumero(n) {
-      return Number(n) === Math.floor(n) ? Number(n) : Number(n).toFixed(2);
+      return Math.abs(n - Math.round(n)) < 1e-10 ? Math.round(n) : Number(n).toFixed(2);
     }
 
     function corregirMultiplicaciones(expr) {
@@ -76,49 +76,60 @@
     function dominio(expr) {
       const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
       let valores = [];
-      for (let i = -100; i <= 100; i += 1) {
+      for (let i = -100; i <= 100; i++) {
         try {
           let val = f(i);
           if (isFinite(val)) valores.push(i);
         } catch {}
       }
-      return valores.length > 0
-        ? `x ∈ [${formatoNumero(Math.min(...valores))}, ${formatoNumero(Math.max(...valores))}]`
-        : "No definido";
+      if (valores.length === 0) return "No definido";
+      return `x ∈ [${formatoNumero(Math.min(...valores))}, ${formatoNumero(Math.max(...valores))}]`;
     }
 
     function rango(expr) {
       const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
       let valores = [];
-      for (let i = -100; i <= 100; i += 1) {
+      for (let i = -100; i <= 100; i++) {
         try {
           let val = f(i);
           if (isFinite(val)) valores.push(val);
         } catch {}
       }
       if (valores.length === 0) return "No definido";
-      const min = Math.min(...valores);
-      const max = Math.max(...valores);
-      return `y ∈ [${formatoNumero(min)}, ${formatoNumero(max)}]`;
+      return `y ∈ [${formatoNumero(Math.min(...valores))}, ${formatoNumero(Math.max(...valores))}]`;
+    }
+
+    function obtenerAsintotas(expr) {
+      let asintotas = [];
+      const tokens = expr.split('/');
+      if (tokens.length === 2) {
+        const denominador = tokens[1].split(/[+\-*/]/)[0]; // toma parte inicial
+        try {
+          const f = new Function("x", "return " + denominador.replace(/\^/g, "**"));
+          for (let x = -100; x <= 100; x += 0.1) {
+            const val = f(x);
+            if (Math.abs(val) < 0.05) {
+              asintotas.push(formatoNumero(x));
+            }
+          }
+        } catch {}
+      }
+      return [...new Set(asintotas)];
     }
 
     function graficar(expr) {
       const f = new Function("x", "return " + expr.replace(/x²/g, "x*x").replace(/\^/g, "**"));
-      let x = [], y = [], asintotas = [];
+      let x = [], y = [], discontinuos = [];
 
       for (let i = -20; i <= 20; i += 0.1) {
         x.push(i);
         try {
           let val = f(i);
-          if (!isFinite(val)) {
-            y.push(null);
-            asintotas.push(i.toFixed(2));
-          } else {
-            y.push(val);
-          }
+          y.push(isFinite(val) ? val : null);
+          if (!isFinite(val)) discontinuos.push(i.toFixed(2));
         } catch {
           y.push(null);
-          asintotas.push(i.toFixed(2));
+          discontinuos.push(i.toFixed(2));
         }
       }
 
@@ -130,7 +141,7 @@
         line: { color: '#2980b9' }
       }];
 
-      asintotas = [...new Set(asintotas)];
+      const asintotas = obtenerAsintotas(expr);
       asintotas.forEach(a => {
         trazos.push({
           x: [a, a],
@@ -165,9 +176,8 @@
           const izquierda = match[1], operador = match[2], derecha = match[3];
           const expr = `(${izquierda}) - (${derecha})`;
           const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
-          let a = f(1), b = f(-1), sol = (a * b < 0)
-            ? "Tiene solución (cambia de signo)"
-            : "No cambia de signo — puede no tener solución";
+          let a = f(1), b = f(-1);
+          let sol = (a * b < 0) ? "Tiene solución (cambia de signo)" : "Puede no tener solución";
 
           resultado.innerHTML = `
             <p><strong>Desigualdad:</strong> ${raw}</p>
@@ -182,24 +192,28 @@
           const izquierda = match[1], derecha = match[2];
           const expr = `(${izquierda}) - (${derecha})`;
           const f = new Function("x", "return " + expr.replace(/\^/g, "**"));
-
           let soluciones = [];
+
           for (let x = -100; x <= 100; x += 0.1) {
-            if (Math.abs(f(x)) < 0.1) soluciones.push(Number(x.toFixed(2)));
+            if (Math.abs(f(x)) < 0.01) {
+              soluciones.push(Number(x.toFixed(4)));
+            }
           }
-          soluciones = [...new Set(soluciones)].sort((a, b) => a - b);
+
+          soluciones = [...new Set(soluciones.map(n => parseFloat(n.toFixed(4))))];
+          const exacta = soluciones.length === 1 ? formatoNumero(soluciones[0]) : soluciones.map(formatoNumero).join(", ");
 
           resultado.innerHTML = `
             <p><strong>Ecuación:</strong> ${raw}</p>
-            <p><strong>Solución(es) aproximada(s):</strong> ${soluciones.map(formatoNumero).join(", ")}</p>
+            <p><strong>Solución:</strong> ${exacta}</p>
             <p><strong>Dominio:</strong> ${dominio(expr)}</p>
             <p><strong>Rango:</strong> ${rango(expr)}</p>`;
-          decir(`Soluciones aproximadas: ${soluciones.map(formatoNumero).join(", ")}`);
+          decir(`Solución: ${exacta}`);
           graficar(expr);
 
         } else if (!input.includes("x")) {
           const val = eval(input);
-          resultado.innerHTML = `<p><strong>Resultado:</strong> ${val}</p>`;
+          resultado.innerHTML = `<p><strong>Resultado:</strong> ${formatoNumero(val)}</p>`;
           decir(`El resultado es ${val}`);
         } else {
           const expr = input.replace(/^y=/, "");
