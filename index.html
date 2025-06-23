@@ -61,6 +61,10 @@
       speechSynthesis.speak(voz);
     }
 
+    function formatoNumero(n) {
+      return Number(n) === Math.floor(n) ? Number(n) : Number(n).toFixed(2);
+    }
+
     function corregirMultiplicaciones(expr) {
       return expr
         .replace(/([0-9])([a-zA-Z])/g, "$1*$2")
@@ -78,7 +82,9 @@
           if (isFinite(val)) valores.push(i);
         } catch {}
       }
-      return valores.length > 0 ? `x ∈ [${Math.min(...valores)}, ${Math.max(...valores)}]` : "No definido";
+      return valores.length > 0
+        ? `x ∈ [${formatoNumero(Math.min(...valores))}, ${formatoNumero(Math.max(...valores))}]`
+        : "No definido";
     }
 
     function rango(expr) {
@@ -90,7 +96,10 @@
           if (isFinite(val)) valores.push(val);
         } catch {}
       }
-      return valores.length > 0 ? `y ∈ [${Math.min(...valores).toFixed(2)}, ${Math.max(...valores).toFixed(2)}]` : "No definido";
+      if (valores.length === 0) return "No definido";
+      const min = Math.min(...valores);
+      const max = Math.max(...valores);
+      return `y ∈ [${formatoNumero(min)}, ${formatoNumero(max)}]`;
     }
 
     function graficar(expr) {
@@ -182,10 +191,10 @@
 
           resultado.innerHTML = `
             <p><strong>Ecuación:</strong> ${raw}</p>
-            <p><strong>Solución(es) aproximada(s):</strong> ${soluciones.join(", ")}</p>
+            <p><strong>Solución(es) aproximada(s):</strong> ${soluciones.map(formatoNumero).join(", ")}</p>
             <p><strong>Dominio:</strong> ${dominio(expr)}</p>
             <p><strong>Rango:</strong> ${rango(expr)}</p>`;
-          decir(`Soluciones aproximadas: ${soluciones.join(", ")}`);
+          decir(`Soluciones aproximadas: ${soluciones.map(formatoNumero).join(", ")}`);
           graficar(expr);
 
         } else if (!input.includes("x")) {
