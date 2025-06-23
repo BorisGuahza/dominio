@@ -103,15 +103,21 @@
 
         } else {
           if (entrada.includes("x")) {
-            resultado.innerHTML = `<div class="item">🤖 ${hablaBot("faltaOperador")}</div>`;
+            const mensaje = hablaBot("faltaOperador");
+            decir(mensaje);
+            resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
           } else {
             const valor = eval(entrada);
-            resultado.innerHTML = `<div class="item">🤖 ${hablaBot("expresionNumerica", valor)}</div>`;
+            const mensaje = hablaBot("expresionNumerica", valor);
+            decir(mensaje);
+            resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
           }
         }
 
       } catch (e) {
-        resultado.innerHTML = `<div class="item error">🤖 ${hablaBot("error")}</div>`;
+        const mensaje = hablaBot("error");
+        decir(mensaje);
+        resultado.innerHTML = `<div class="item error">🤖 ${mensaje}</div>`;
       }
     }
 
@@ -121,14 +127,19 @@
       const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
       const b = eval(expr.replace(re, ""));
 
+      let mensaje = "";
+
       if (a === 0) {
-        resultado.innerHTML = b === 0
-          ? `<div class="item">🤖 ${hablaBot("ecuacionLineal", "x ∈ ℝ (infinitas soluciones)")}</div>`
-          : `<div class="item">🤖 ${hablaBot("ecuacionSinSol")}</div>`;
+        mensaje = b === 0
+          ? hablaBot("ecuacionLineal", "x ∈ ℝ (infinitas soluciones)")
+          : hablaBot("ecuacionSinSol");
       } else {
         const x = -b / a;
-        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionLineal", x)}</div>`;
+        mensaje = hablaBot("ecuacionLineal", x);
       }
+
+      decir(mensaje);
+      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
     }
 
     function resolverEcuacionCuadratica(expr, resultado) {
@@ -139,16 +150,21 @@
       const c = f0;
       const D = b * b - 4 * a * c;
 
+      let mensaje = "";
+
       if (D < 0) {
-        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionSinSol")}</div>`;
+        mensaje = hablaBot("ecuacionSinSol");
       } else if (D === 0) {
         const r = -b / (2 * a);
-        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionCuadraticaDoble", r)}</div>`;
+        mensaje = hablaBot("ecuacionCuadraticaDoble", r);
       } else {
         const r1 = (-b + Math.sqrt(D)) / (2 * a);
         const r2 = (-b - Math.sqrt(D)) / (2 * a);
-        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionCuadratica", [r1, r2])}</div>`;
+        mensaje = hablaBot("ecuacionCuadratica", [r1, r2]);
       }
+
+      decir(mensaje);
+      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
     }
 
     function resolverLineal(expr, operador, resultado) {
@@ -156,17 +172,19 @@
       const match = expr.match(re);
       const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
       const b = eval(expr.replace(re, ""));
-      let mensaje = "";
+      let sol = "";
 
       if (a === 0) {
-        mensaje = eval(`0 ${operador} ${b}`) ? "x ∈ ℝ" : "No hay solución";
+        sol = eval(`0 ${operador} ${b}`) ? "x ∈ ℝ" : "No hay solución";
       } else {
         const x = -b / a;
         const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
-        mensaje = `${signos[operador]}${x}`;
+        sol = `${signos[operador]}${x}`;
       }
 
-      resultado.innerHTML = `<div class="item">🤖 ${hablaBot("desigualdadLineal", mensaje)}</div>`;
+      const mensaje = hablaBot("desigualdadLineal", sol);
+      decir(mensaje);
+      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
     }
 
     function resolverCuadratica(expr, operador, resultado) {
@@ -203,7 +221,9 @@
         }
       }
 
-      resultado.innerHTML = `<div class="item">🤖 ${hablaBot("desigualdadCuadratica", sol)}</div>`;
+      const mensaje = hablaBot("desigualdadCuadratica", sol);
+      decir(mensaje);
+      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
     }
 
     function hablaBot(tipo, datos) {
@@ -215,7 +235,7 @@
         case "ecuacionCuadraticaDoble":
           return `Esta ecuación tiene una única solución doble: x = ${datos}.`;
         case "ecuacionSinSol":
-          return `Lo siento... esta ecuación no tiene solución real. 😕`;
+          return `Lo siento... esta ecuación no tiene solución real.`;
         case "desigualdadLineal":
           return `La solución de tu desigualdad es: ${datos}`;
         case "desigualdadCuadratica":
@@ -223,15 +243,23 @@
         case "expresionNumerica":
           return `Eso es solo una expresión. El resultado es: ${datos}`;
         case "faltaOperador":
-          return `Parece que olvidaste escribir un signo de igualdad (=) o desigualdad (<, >, ≤, ≥).`;
+          return `Parece que olvidaste escribir un signo de igualdad o desigualdad.`;
         case "error":
           return `Ups... algo no salió bien. Revisa tu expresión.`;
         default:
-          return `Hmm... no entendí tu entrada. ¿Podrías intentarlo de nuevo?`;
+          return `Hmm... no entendí tu entrada. Inténtalo otra vez.`;
       }
+    }
+
+    function decir(texto) {
+      const voz = new SpeechSynthesisUtterance(texto);
+      voz.lang = "es-ES";
+      voz.pitch = 1;
+      voz.rate = 1;
+      voz.volume = 1;
+      speechSynthesis.speak(voz);
     }
   </script>
 
 </body>
 </html>
-
