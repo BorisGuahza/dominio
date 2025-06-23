@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Calculadora de Ecuaciones y Desigualdades</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -53,213 +54,202 @@
       color: red;
       font-weight: bold;
     }
+
+    #grafica {
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>🤖 Calculadora Inteligente</h1>
-  <p>Escribe una expresión como:<br>
-     <code>2x + 3 = 7</code> (ecuación) — 
-     <code>x² - 4 ≥ 0</code> (desigualdad) — 
-     <code>5 + 3 * 2</code> (expresión numérica)</p>
+<h1>🤖 Calculadora Inteligente</h1>
+<p>Ejemplos:<br>
+<code>2x + 3 = 7</code> — 
+<code>x² - 4 ≥ 0</code> — 
+<code>5 + 3 * 2</code></p>
 
-  <input type="text" id="desigualdad" placeholder="Escribe aquí tu ecuación o desigualdad">
-  <button onclick="resolverDesigualdad()">Resolver</button>
+<input type="text" id="desigualdad" placeholder="Escribe tu ecuación o desigualdad">
+<button onclick="resolverDesigualdad()">Resolver</button>
 
-  <div class="resultado" id="resultado"></div>
+<div class="resultado" id="resultado"></div>
+<div id="grafica"></div>
 
-  <script>
-    function resolverDesigualdad() {
-      const entrada = document.getElementById("desigualdad").value.trim().replace(/\s+/g, "");
-      const resultado = document.getElementById("resultado");
-      resultado.innerHTML = "";
+<script>
+  function decir(texto) {
+    const voz = new SpeechSynthesisUtterance(texto);
+    voz.lang = "es-ES";
+    voz.pitch = 1;
+    voz.rate = 1;
+    voz.volume = 1;
+    speechSynthesis.speak(voz);
+  }
 
-      const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
-      const igualdadRegex = /(.+)=([^=]+)/;
+  function hablaBot(tipo, datos) {
+    switch (tipo) {
+      case "ecuacionLineal":
+        return `¡Listo! Resolviendo la ecuación, obtengo que x vale ${datos}.`;
+      case "ecuacionCuadratica":
+        return `He resuelto tu ecuación cuadrática. Las soluciones son: x = ${datos[0]} y x = ${datos[1]}.`;
+      case "ecuacionCuadraticaDoble":
+        return `Esta ecuación tiene una única solución doble: x = ${datos}.`;
+      case "ecuacionSinSol":
+        return `Lo siento... esta ecuación no tiene solución real.`;
+      case "desigualdadLineal":
+        return `La solución de tu desigualdad es: ${datos}`;
+      case "desigualdadCuadratica":
+        return `Resolviendo tu desigualdad cuadrática, encontré que: ${datos}`;
+      case "expresionNumerica":
+        return `Eso es solo una expresión. El resultado es: ${datos}`;
+      case "faltaOperador":
+        return `Parece que olvidaste escribir un signo de igualdad o desigualdad.`;
+      case "error":
+        return `Ups... algo no salió bien. Revisa tu expresión.`;
+      default:
+        return `Hmm... no entendí tu entrada. Inténtalo otra vez.`;
+    }
+  }
 
-      try {
-        if (desigualdadRegex.test(entrada)) {
-          const match = entrada.match(desigualdadRegex);
-          const izquierda = match[1];
-          const operador = match[2];
-          const derecha = match[3];
-          const expr = `(${izquierda}) - (${derecha})`;
+  function graficar(expr) {
+    const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\\^2/g, "x*x")};`);
+    const x = [], y = [];
+    for (let i = -10; i <= 10; i += 0.1) {
+      x.push(i);
+      try { y.push(f(i)); } catch { y.push(null); }
+    }
+    Plotly.newPlot('grafica', [{
+      x, y, mode: 'lines', name: 'f(x)', line: { color: '#2ecc71' }
+    }], {
+      title: 'Gráfica de la función',
+      xaxis: { title: 'x' },
+      yaxis: { title: 'f(x)' }
+    });
+  }
 
-          const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
-          cuadratica
-            ? resolverCuadratica(expr, operador, resultado)
-            : resolverLineal(expr, operador, resultado);
+  function resolverDesigualdad() {
+    const entrada = document.getElementById("desigualdad").value.trim().replace(/\s+/g, "");
+    const resultado = document.getElementById("resultado");
+    resultado.innerHTML = "";
+    Plotly.purge("grafica");
 
-        } else if (igualdadRegex.test(entrada)) {
-          const match = entrada.match(igualdadRegex);
-          const izquierda = match[1];
-          const derecha = match[2];
-          const expr = `(${izquierda}) - (${derecha})`;
+    const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
+    const igualdadRegex = /(.+)=([^=]+)/;
 
-          const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
-          cuadratica
-            ? resolverEcuacionCuadratica(expr, resultado)
-            : resolverEcuacionLineal(expr, resultado);
-
+    try {
+      if (desigualdadRegex.test(entrada)) {
+        const match = entrada.match(desigualdadRegex);
+        const izquierda = match[1], operador = match[2], derecha = match[3];
+        const expr = `(${izquierda}) - (${derecha})`;
+        const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+        cuadratica ? resolverCuadratica(expr, operador, resultado)
+                   : resolverLineal(expr, operador, resultado);
+        graficar(expr);
+      } else if (igualdadRegex.test(entrada)) {
+        const match = entrada.match(igualdadRegex);
+        const izquierda = match[1], derecha = match[2];
+        const expr = `(${izquierda}) - (${derecha})`;
+        const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+        cuadratica ? resolverEcuacionCuadratica(expr, resultado)
+                   : resolverEcuacionLineal(expr, resultado);
+        graficar(expr);
+      } else {
+        if (entrada.includes("x")) {
+          const mensaje = hablaBot("faltaOperador");
+          decir(mensaje);
+          resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
         } else {
-          if (entrada.includes("x")) {
-            const mensaje = hablaBot("faltaOperador");
-            decir(mensaje);
-            resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
-          } else {
-            const valor = eval(entrada);
-            const mensaje = hablaBot("expresionNumerica", valor);
-            decir(mensaje);
-            resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
-          }
-        }
-
-      } catch (e) {
-        const mensaje = hablaBot("error");
-        decir(mensaje);
-        resultado.innerHTML = `<div class="item error">🤖 ${mensaje}</div>`;
-      }
-    }
-
-    function resolverEcuacionLineal(expr, resultado) {
-      const re = /([-+]?\d*\.?\d*)x/;
-      const match = expr.match(re);
-      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
-      const b = eval(expr.replace(re, ""));
-
-      let mensaje = "";
-
-      if (a === 0) {
-        mensaje = b === 0
-          ? hablaBot("ecuacionLineal", "x ∈ ℝ (infinitas soluciones)")
-          : hablaBot("ecuacionSinSol");
-      } else {
-        const x = -b / a;
-        mensaje = hablaBot("ecuacionLineal", x);
-      }
-
-      decir(mensaje);
-      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
-    }
-
-    function resolverEcuacionCuadratica(expr, resultado) {
-      const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
-      const f0 = f(0), f1 = f(1), f_1 = f(-1);
-      const a = f1 - 2 * f0 + f_1;
-      const b = (f1 - f_1) / 2;
-      const c = f0;
-      const D = b * b - 4 * a * c;
-
-      let mensaje = "";
-
-      if (D < 0) {
-        mensaje = hablaBot("ecuacionSinSol");
-      } else if (D === 0) {
-        const r = -b / (2 * a);
-        mensaje = hablaBot("ecuacionCuadraticaDoble", r);
-      } else {
-        const r1 = (-b + Math.sqrt(D)) / (2 * a);
-        const r2 = (-b - Math.sqrt(D)) / (2 * a);
-        mensaje = hablaBot("ecuacionCuadratica", [r1, r2]);
-      }
-
-      decir(mensaje);
-      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
-    }
-
-    function resolverLineal(expr, operador, resultado) {
-      const re = /([-+]?\d*\.?\d*)x/;
-      const match = expr.match(re);
-      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
-      const b = eval(expr.replace(re, ""));
-      let sol = "";
-
-      if (a === 0) {
-        sol = eval(`0 ${operador} ${b}`) ? "x ∈ ℝ" : "No hay solución";
-      } else {
-        const x = -b / a;
-        const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
-        sol = `${signos[operador]}${x}`;
-      }
-
-      const mensaje = hablaBot("desigualdadLineal", sol);
-      decir(mensaje);
-      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
-    }
-
-    function resolverCuadratica(expr, operador, resultado) {
-      const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
-      const f0 = f(0), f1 = f(1), f_1 = f(-1);
-      const a = f1 - 2 * f0 + f_1;
-      const b = (f1 - f_1) / 2;
-      const c = f0;
-      const D = b * b - 4 * a * c;
-      let sol = "";
-
-      if (D < 0) {
-        sol = ((a > 0 && operador === ">") || (a < 0 && operador === "<")) ?
-          "x ∈ ℝ" : "No hay solución";
-      } else if (D === 0) {
-        const r = -b / (2 * a);
-        sol = (operador === ">" || operador === "<") ?
-          `x ∈ ℝ, x ≠ ${r}` : `x = ${r}`;
-      } else {
-        const r1 = (-b + Math.sqrt(D)) / (2 * a);
-        const r2 = (-b - Math.sqrt(D)) / (2 * a);
-        const [min, max] = [Math.min(r1, r2), Math.max(r1, r2)];
-
-        if (a > 0) {
-          if (operador === ">") sol = `x < ${min} o x > ${max}`;
-          if (operador === ">=") sol = `x ≤ ${min} o x ≥ ${max}`;
-          if (operador === "<") sol = `x ∈ (${min}, ${max})`;
-          if (operador === "<=") sol = `x ∈ [${min}, ${max}]`;
-        } else {
-          if (operador === "<") sol = `x < ${min} o x > ${max}`;
-          if (operador === "<=") sol = `x ≤ ${min} o x ≥ ${max}`;
-          if (operador === ">") sol = `x ∈ (${min}, ${max})`;
-          if (operador === ">=") sol = `x ∈ [${min}, ${max}]`;
+          const valor = eval(entrada);
+          const mensaje = hablaBot("expresionNumerica", valor);
+          decir(mensaje);
+          resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+          Plotly.purge("grafica");
         }
       }
-
-      const mensaje = hablaBot("desigualdadCuadratica", sol);
+    } catch (e) {
+      const mensaje = hablaBot("error");
       decir(mensaje);
-      resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+      resultado.innerHTML = `<div class="item error">🤖 ${mensaje}</div>`;
+      Plotly.purge("grafica");
     }
+  }
 
-    function hablaBot(tipo, datos) {
-      switch (tipo) {
-        case "ecuacionLineal":
-          return `¡Listo! Resolviendo la ecuación, obtengo que x vale ${datos}.`;
-        case "ecuacionCuadratica":
-          return `He resuelto tu ecuación cuadrática. Las soluciones son: x = ${datos[0]} y x = ${datos[1]}.`;
-        case "ecuacionCuadraticaDoble":
-          return `Esta ecuación tiene una única solución doble: x = ${datos}.`;
-        case "ecuacionSinSol":
-          return `Lo siento... esta ecuación no tiene solución real.`;
-        case "desigualdadLineal":
-          return `La solución de tu desigualdad es: ${datos}`;
-        case "desigualdadCuadratica":
-          return `Resolviendo tu desigualdad cuadrática, encontré que: ${datos}`;
-        case "expresionNumerica":
-          return `Eso es solo una expresión. El resultado es: ${datos}`;
-        case "faltaOperador":
-          return `Parece que olvidaste escribir un signo de igualdad o desigualdad.`;
-        case "error":
-          return `Ups... algo no salió bien. Revisa tu expresión.`;
-        default:
-          return `Hmm... no entendí tu entrada. Inténtalo otra vez.`;
+  function resolverEcuacionLineal(expr, resultado) {
+    const re = /([-+]?\d*\.?\d*)x/;
+    const match = expr.match(re);
+    const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
+    const b = eval(expr.replace(re, ""));
+    let mensaje = (a === 0)
+      ? (b === 0 ? hablaBot("ecuacionLineal", "x ∈ ℝ") : hablaBot("ecuacionSinSol"))
+      : hablaBot("ecuacionLineal", -b / a);
+    decir(mensaje);
+    resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+  }
+
+  function resolverEcuacionCuadratica(expr, resultado) {
+    const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\\^2/g, "x*x")};`);
+    const f0 = f(0), f1 = f(1), f_1 = f(-1);
+    const a = f1 - 2*f0 + f_1, b = (f1 - f_1) / 2, c = f0;
+    const D = b*b - 4*a*c;
+    let mensaje = "";
+    if (D < 0) mensaje = hablaBot("ecuacionSinSol");
+    else if (D === 0) mensaje = hablaBot("ecuacionCuadraticaDoble", -b/(2*a));
+    else mensaje = hablaBot("ecuacionCuadratica", [
+      (-b + Math.sqrt(D)) / (2 * a),
+      (-b - Math.sqrt(D)) / (2 * a)
+    ]);
+    decir(mensaje);
+    resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+  }
+
+  function resolverLineal(expr, operador, resultado) {
+    const re = /([-+]?\d*\.?\d*)x/;
+    const match = expr.match(re);
+    const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
+    const b = eval(expr.replace(re, ""));
+    let sol = "";
+    if (a === 0) {
+      sol = eval(`0 ${operador} ${b}`) ? "x ∈ ℝ" : "No hay solución";
+    } else {
+      const x = -b / a;
+      const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
+      sol = `${signos[operador]}${x}`;
+    }
+    const mensaje = hablaBot("desigualdadLineal", sol);
+    decir(mensaje);
+    resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+  }
+
+  function resolverCuadratica(expr, operador, resultado) {
+    const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\\^2/g, "x*x")};`);
+    const f0 = f(0), f1 = f(1), f_1 = f(-1);
+    const a = f1 - 2*f0 + f_1, b = (f1 - f_1)/2, c = f0;
+    const D = b*b - 4*a*c;
+    let sol = "";
+    if (D < 0) {
+      sol = ((a > 0 && operador === ">") || (a < 0 && operador === "<")) ? "x ∈ ℝ" : "No hay solución";
+    } else if (D === 0) {
+      const r = -b / (2 * a);
+      sol = (operador === ">" || operador === "<") ? `x ∈ ℝ, x ≠ ${r}` : `x = ${r}`;
+    } else {
+      const r1 = (-b + Math.sqrt(D)) / (2 * a);
+      const r2 = (-b - Math.sqrt(D)) / (2 * a);
+      const [min, max] = [Math.min(r1, r2), Math.max(r1, r2)];
+      if (a > 0) {
+        if (operador === ">") sol = `x < ${min} o x > ${max}`;
+        if (operador === ">=") sol = `x ≤ ${min} o x ≥ ${max}`;
+        if (operador === "<") sol = `x ∈ (${min}, ${max})`;
+        if (operador === "<=") sol = `x ∈ [${min}, ${max}]`;
+      } else {
+        if (operador === "<") sol = `x < ${min} o x > ${max}`;
+        if (operador === "<=") sol = `x ≤ ${min} o x ≥ ${max}`;
+        if (operador === ">") sol = `x ∈ (${min}, ${max})`;
+        if (operador === ">=") sol = `x ∈ [${min}, ${max}]`;
       }
     }
-
-    function decir(texto) {
-      const voz = new SpeechSynthesisUtterance(texto);
-      voz.lang = "es-ES";
-      voz.pitch = 1;
-      voz.rate = 1;
-      voz.volume = 1;
-      speechSynthesis.speak(voz);
-    }
-  </script>
+    const mensaje = hablaBot("desigualdadCuadratica", sol);
+    decir(mensaje);
+    resultado.innerHTML = `<div class="item">🤖 ${mensaje}</div>`;
+  }
+</script>
 
 </body>
 </html>
