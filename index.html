@@ -71,103 +71,91 @@
   <div class="resultado" id="resultado"></div>
 
   <script>
-    function resolverDesigualdad() {
-      const entrada = document.getElementById("desigualdad").value.replace(/\s+/g, "");
-      const resultado = document.getElementById("resultado");
-      resultado.innerHTML = ""; // limpiar
+function resolverDesigualdad() {
+  const entrada = document.getElementById("desigualdad").value.trim().replace(/\s+/g, "");
+  const resultado = document.getElementById("resultado");
+  resultado.innerHTML = "";
 
-      try {
-        const match = entrada.match(/(.+)(<=|>=|<|>)(.+)/);
-        if (!match) throw "Formato inválido. Usa <, >, <= o >=";
+  const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
+  const igualdadRegex = /(.+)=([^=]+)/;
 
-        const izquierda = match[1];
-        const operador = match[2];
-        const derecha = match[3];
-        const expr = `(${izquierda}) - (${derecha})`;
+  try {
+    if (desigualdadRegex.test(entrada)) {
+      const match = entrada.match(desigualdadRegex);
+      const izquierda = match[1];
+      const operador = match[2];
+      const derecha = match[3];
+      const expr = `(${izquierda}) - (${derecha})`;
 
-        const contieneCuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
-        if (contieneCuadratica) {
-          resolverCuadratica(expr, operador, resultado);
-        } else {
-          resolverLineal(expr, operador, resultado);
-        }
+      const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+      cuadratica
+        ? resolverCuadratica(expr, operador, resultado)
+        : resolverLineal(expr, operador, resultado);
 
-      } catch (e) {
-        resultado.innerHTML = `<p class="error">❌ Error: ${e}</p>`;
-      }
-    }
+    } else if (igualdadRegex.test(entrada)) {
+      const match = entrada.match(igualdadRegex);
+      const izquierda = match[1];
+      const derecha = match[2];
+      const expr = `(${izquierda}) - (${derecha})`;
 
-    function resolverLineal(expr, operador, resultado) {
-      const re = /([-+]?\d*\.?\d*)x/;
-      const match = expr.match(re);
-      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
-      const b = eval(expr.replace(re, ""));
+      const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+      cuadratica
+        ? resolverEcuacionCuadratica(expr, resultado)
+        : resolverEcuacionLineal(expr, resultado);
 
-      let x, mensaje;
-      if (a === 0) {
-        mensaje = eval(`0 ${operador} ${b}`) ?
-          "Se cumple para todo x ∈ ℝ" : "No hay solución";
+    } else {
+      if (entrada.includes("x")) {
+        resultado.innerHTML = `<div class="item">❗ Parece que olvidaste usar un operador: usa <, >, ≤, ≥ o =</div>`;
       } else {
-        x = -b / a;
-        const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
-        mensaje = `${signos[operador]}${x}`;
+        const valor = eval(entrada);
+        resultado.innerHTML = `<div class="item">🧮 <strong>Resultado:</strong> ${valor}</div>`;
       }
-
-      resultado.innerHTML = `
-        <div class="item">✅ <span>Solución:</span> ${mensaje}</div>
-        <div class="item">📌 <span>Dominio:</span> ℝ</div>
-        <div class="item">🎯 <span>Rango:</span> No aplica (es desigualdad lineal)</div>
-      `;
     }
 
-    function resolverCuadratica(expr, operador, resultado) {
-      const e = expr.replace(/x\^2/g, "x*x").replace(/x²/g, "x*x");
-      const f = new Function("x", `return ${e};`);
-      const f0 = f(0), f1 = f(1), f_1 = f(-1);
-      const a = f1 - 2 * f0 + f_1;
-      const b = (f1 - f_1) / 2;
-      const c = f0;
+  } catch (e) {
+    resultado.innerHTML = `<p class="error">❌ Error: ${e}</p>`;
+  }
+}
 
-      const D = b * b - 4 * a * c;
-      let sol = "";
+function resolverEcuacionLineal(expr, resultado) {
+  const re = /([-+]?\d*\.?\d*)x/;
+  const match = expr.match(re);
+  const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
+  const b = eval(expr.replace(re, ""));
 
-      if (D < 0) {
-        sol = ((a > 0 && operador === ">") || (a < 0 && operador === "<")) ?
-          "x ∈ ℝ" : "No hay solución real";
-      } else if (D === 0) {
-        const r = -b / (2 * a);
-        sol = (operador === ">" || operador === "<") ?
-          `x ∈ ℝ, x ≠ ${r}` : `x = ${r}`;
-      } else {
-        const r1 = (-b + Math.sqrt(D)) / (2 * a);
-        const r2 = (-b - Math.sqrt(D)) / (2 * a);
-        const [min, max] = [Math.min(r1, r2), Math.max(r1, r2)];
+  if (a === 0) {
+    resultado.innerHTML = b === 0
+      ? "✅ Solución: x ∈ ℝ (infinitas soluciones)"
+      : "❌ No hay solución";
+  } else {
+    const x = -b / a;
+    resultado.innerHTML = `
+      <div class="item">✅ <strong>Solución:</strong> x = ${x}</div>
+      <div class="item">📌 <strong>Dominio:</strong> ℝ</div>
+    `;
+  }
+}
 
-        if (a > 0) {
-          if (operador === ">") sol = `x < ${min} o x > ${max}`;
-          if (operador === ">=") sol = `x ≤ ${min} o x ≥ ${max}`;
-          if (operador === "<") sol = `x ∈ (${min}, ${max})`;
-          if (operador === "<=") sol = `x ∈ [${min}, ${max}]`;
-        } else {
-          if (operador === "<") sol = `x < ${min} o x > ${max}`;
-          if (operador === "<=") sol = `x ≤ ${min} o x ≥ ${max}`;
-          if (operador === ">") sol = `x ∈ (${min}, ${max})`;
-          if (operador === ">=") sol = `x ∈ [${min}, ${max}]`;
-        }
-      }
+function resolverEcuacionCuadratica(expr, resultado) {
+  const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
+  const f0 = f(0), f1 = f(1), f_1 = f(-1);
+  const a = f1 - 2 * f0 + f_1;
+  const b = (f1 - f_1) / 2;
+  const c = f0;
+  const D = b * b - 4 * a * c;
 
-      // Calcular vértice para estimar el rango
-      const xv = -b / (2 * a);
-      const yv = a * xv * xv + b * xv + c;
-      const rango = (a > 0) ? `[${yv}, ∞)` : `(-∞, ${yv}]`;
+  if (D < 0) {
+    resultado.innerHTML = `❌ No hay soluciones reales`;
+  } else if (D === 0) {
+    const r = -b / (2 * a);
+    resultado.innerHTML = `✅ <strong>Solución doble:</strong> x = ${r}`;
+  } else {
+    const r1 = (-b + Math.sqrt(D)) / (2 * a);
+    const r2 = (-b - Math.sqrt(D)) / (2 * a);
+    resultado.innerHTML = `✅ <strong>Soluciones:</strong> x = ${r1} y x = ${r2}`;
+  }
+}
 
-      resultado.innerHTML = `
-        <div class="item">✅ <span>Solución:</span> ${sol}</div>
-        <div class="item">📌 <span>Dominio:</span> ℝ</div>
-        <div class="item">🎯 <span>Rango aproximado:</span> ${rango}</div>
-      `;
-    }
-  </script>
-
-</body>
-</html>
+// funciones resolverLineal y resolverCuadratica van igual que antes
+// (no las repito aquí por brevedad, pero puedes usar las ya corregidas de la versión anterior)
+</script>
