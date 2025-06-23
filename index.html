@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Desigualdades Lineales y Cuadráticas</title>
+  <title>Calculadora de Ecuaciones y Desigualdades</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -15,7 +15,6 @@
 
     h1 {
       color: #34495e;
-      margin-bottom: 10px;
     }
 
     input, button {
@@ -50,10 +49,6 @@
       margin-bottom: 15px;
     }
 
-    .item span {
-      font-weight: bold;
-    }
-
     .error {
       color: red;
       font-weight: bold;
@@ -62,100 +57,181 @@
 </head>
 <body>
 
-  <h1>🔎 Calculadora de Desigualdades</h1>
-  <p>Escribe una desigualdad, por ejemplo: <code>x² - 4 &gt; 0</code> o <code>2x + 5 ≤ 9</code></p>
+  <h1>🤖 Calculadora Inteligente</h1>
+  <p>Escribe una expresión como:<br>
+     <code>2x + 3 = 7</code> (ecuación) — 
+     <code>x² - 4 ≥ 0</code> (desigualdad) — 
+     <code>5 + 3 * 2</code> (expresión numérica)</p>
 
-  <input type="text" id="desigualdad" placeholder="Ej: x² - 4 > 0">
+  <input type="text" id="desigualdad" placeholder="Escribe aquí tu ecuación o desigualdad">
   <button onclick="resolverDesigualdad()">Resolver</button>
 
   <div class="resultado" id="resultado"></div>
 
   <script>
-function resolverDesigualdad() {
-  const entrada = document.getElementById("desigualdad").value.trim().replace(/\s+/g, "");
-  const resultado = document.getElementById("resultado");
-  resultado.innerHTML = "";
+    function resolverDesigualdad() {
+      const entrada = document.getElementById("desigualdad").value.trim().replace(/\s+/g, "");
+      const resultado = document.getElementById("resultado");
+      resultado.innerHTML = "";
 
-  const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
-  const igualdadRegex = /(.+)=([^=]+)/;
+      const desigualdadRegex = /(.+)(<=|>=|<|>)(.+)/;
+      const igualdadRegex = /(.+)=([^=]+)/;
 
-  try {
-    if (desigualdadRegex.test(entrada)) {
-      const match = entrada.match(desigualdadRegex);
-      const izquierda = match[1];
-      const operador = match[2];
-      const derecha = match[3];
-      const expr = `(${izquierda}) - (${derecha})`;
+      try {
+        if (desigualdadRegex.test(entrada)) {
+          const match = entrada.match(desigualdadRegex);
+          const izquierda = match[1];
+          const operador = match[2];
+          const derecha = match[3];
+          const expr = `(${izquierda}) - (${derecha})`;
 
-      const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
-      cuadratica
-        ? resolverCuadratica(expr, operador, resultado)
-        : resolverLineal(expr, operador, resultado);
+          const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+          cuadratica
+            ? resolverCuadratica(expr, operador, resultado)
+            : resolverLineal(expr, operador, resultado);
 
-    } else if (igualdadRegex.test(entrada)) {
-      const match = entrada.match(igualdadRegex);
-      const izquierda = match[1];
-      const derecha = match[2];
-      const expr = `(${izquierda}) - (${derecha})`;
+        } else if (igualdadRegex.test(entrada)) {
+          const match = entrada.match(igualdadRegex);
+          const izquierda = match[1];
+          const derecha = match[2];
+          const expr = `(${izquierda}) - (${derecha})`;
 
-      const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
-      cuadratica
-        ? resolverEcuacionCuadratica(expr, resultado)
-        : resolverEcuacionLineal(expr, resultado);
+          const cuadratica = expr.includes("x^2") || expr.includes("x*x") || expr.match(/x\*x|x²/);
+          cuadratica
+            ? resolverEcuacionCuadratica(expr, resultado)
+            : resolverEcuacionLineal(expr, resultado);
 
-    } else {
-      if (entrada.includes("x")) {
-        resultado.innerHTML = `<div class="item">❗ Parece que olvidaste usar un operador: usa <, >, ≤, ≥ o =</div>`;
-      } else {
-        const valor = eval(entrada);
-        resultado.innerHTML = `<div class="item">🧮 <strong>Resultado:</strong> ${valor}</div>`;
+        } else {
+          if (entrada.includes("x")) {
+            resultado.innerHTML = `<div class="item">🤖 ${hablaBot("faltaOperador")}</div>`;
+          } else {
+            const valor = eval(entrada);
+            resultado.innerHTML = `<div class="item">🤖 ${hablaBot("expresionNumerica", valor)}</div>`;
+          }
+        }
+
+      } catch (e) {
+        resultado.innerHTML = `<div class="item error">🤖 ${hablaBot("error")}</div>`;
       }
     }
 
-  } catch (e) {
-    resultado.innerHTML = `<p class="error">❌ Error: ${e}</p>`;
-  }
-}
+    function resolverEcuacionLineal(expr, resultado) {
+      const re = /([-+]?\d*\.?\d*)x/;
+      const match = expr.match(re);
+      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
+      const b = eval(expr.replace(re, ""));
 
-function resolverEcuacionLineal(expr, resultado) {
-  const re = /([-+]?\d*\.?\d*)x/;
-  const match = expr.match(re);
-  const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
-  const b = eval(expr.replace(re, ""));
+      if (a === 0) {
+        resultado.innerHTML = b === 0
+          ? `<div class="item">🤖 ${hablaBot("ecuacionLineal", "x ∈ ℝ (infinitas soluciones)")}</div>`
+          : `<div class="item">🤖 ${hablaBot("ecuacionSinSol")}</div>`;
+      } else {
+        const x = -b / a;
+        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionLineal", x)}</div>`;
+      }
+    }
 
-  if (a === 0) {
-    resultado.innerHTML = b === 0
-      ? "✅ Solución: x ∈ ℝ (infinitas soluciones)"
-      : "❌ No hay solución";
-  } else {
-    const x = -b / a;
-    resultado.innerHTML = `
-      <div class="item">✅ <strong>Solución:</strong> x = ${x}</div>
-      <div class="item">📌 <strong>Dominio:</strong> ℝ</div>
-    `;
-  }
-}
+    function resolverEcuacionCuadratica(expr, resultado) {
+      const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
+      const f0 = f(0), f1 = f(1), f_1 = f(-1);
+      const a = f1 - 2 * f0 + f_1;
+      const b = (f1 - f_1) / 2;
+      const c = f0;
+      const D = b * b - 4 * a * c;
 
-function resolverEcuacionCuadratica(expr, resultado) {
-  const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
-  const f0 = f(0), f1 = f(1), f_1 = f(-1);
-  const a = f1 - 2 * f0 + f_1;
-  const b = (f1 - f_1) / 2;
-  const c = f0;
-  const D = b * b - 4 * a * c;
+      if (D < 0) {
+        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionSinSol")}</div>`;
+      } else if (D === 0) {
+        const r = -b / (2 * a);
+        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionCuadraticaDoble", r)}</div>`;
+      } else {
+        const r1 = (-b + Math.sqrt(D)) / (2 * a);
+        const r2 = (-b - Math.sqrt(D)) / (2 * a);
+        resultado.innerHTML = `<div class="item">🤖 ${hablaBot("ecuacionCuadratica", [r1, r2])}</div>`;
+      }
+    }
 
-  if (D < 0) {
-    resultado.innerHTML = `❌ No hay soluciones reales`;
-  } else if (D === 0) {
-    const r = -b / (2 * a);
-    resultado.innerHTML = `✅ <strong>Solución doble:</strong> x = ${r}`;
-  } else {
-    const r1 = (-b + Math.sqrt(D)) / (2 * a);
-    const r2 = (-b - Math.sqrt(D)) / (2 * a);
-    resultado.innerHTML = `✅ <strong>Soluciones:</strong> x = ${r1} y x = ${r2}`;
-  }
-}
+    function resolverLineal(expr, operador, resultado) {
+      const re = /([-+]?\d*\.?\d*)x/;
+      const match = expr.match(re);
+      const a = parseFloat(match[1] || (match[1] === "" ? 1 : 0));
+      const b = eval(expr.replace(re, ""));
+      let mensaje = "";
 
-// funciones resolverLineal y resolverCuadratica van igual que antes
-// (no las repito aquí por brevedad, pero puedes usar las ya corregidas de la versión anterior)
-</script>
+      if (a === 0) {
+        mensaje = eval(`0 ${operador} ${b}`) ? "x ∈ ℝ" : "No hay solución";
+      } else {
+        const x = -b / a;
+        const signos = { "<": "x < ", "<=": "x ≤ ", ">": "x > ", ">=": "x ≥ " };
+        mensaje = `${signos[operador]}${x}`;
+      }
+
+      resultado.innerHTML = `<div class="item">🤖 ${hablaBot("desigualdadLineal", mensaje)}</div>`;
+    }
+
+    function resolverCuadratica(expr, operador, resultado) {
+      const f = new Function("x", `return ${expr.replace(/x²/g, "x*x").replace(/x\^2/g, "x*x")};`);
+      const f0 = f(0), f1 = f(1), f_1 = f(-1);
+      const a = f1 - 2 * f0 + f_1;
+      const b = (f1 - f_1) / 2;
+      const c = f0;
+      const D = b * b - 4 * a * c;
+      let sol = "";
+
+      if (D < 0) {
+        sol = ((a > 0 && operador === ">") || (a < 0 && operador === "<")) ?
+          "x ∈ ℝ" : "No hay solución";
+      } else if (D === 0) {
+        const r = -b / (2 * a);
+        sol = (operador === ">" || operador === "<") ?
+          `x ∈ ℝ, x ≠ ${r}` : `x = ${r}`;
+      } else {
+        const r1 = (-b + Math.sqrt(D)) / (2 * a);
+        const r2 = (-b - Math.sqrt(D)) / (2 * a);
+        const [min, max] = [Math.min(r1, r2), Math.max(r1, r2)];
+
+        if (a > 0) {
+          if (operador === ">") sol = `x < ${min} o x > ${max}`;
+          if (operador === ">=") sol = `x ≤ ${min} o x ≥ ${max}`;
+          if (operador === "<") sol = `x ∈ (${min}, ${max})`;
+          if (operador === "<=") sol = `x ∈ [${min}, ${max}]`;
+        } else {
+          if (operador === "<") sol = `x < ${min} o x > ${max}`;
+          if (operador === "<=") sol = `x ≤ ${min} o x ≥ ${max}`;
+          if (operador === ">") sol = `x ∈ (${min}, ${max})`;
+          if (operador === ">=") sol = `x ∈ [${min}, ${max}]`;
+        }
+      }
+
+      resultado.innerHTML = `<div class="item">🤖 ${hablaBot("desigualdadCuadratica", sol)}</div>`;
+    }
+
+    function hablaBot(tipo, datos) {
+      switch (tipo) {
+        case "ecuacionLineal":
+          return `¡Listo! Resolviendo la ecuación, obtengo que x vale ${datos}.`;
+        case "ecuacionCuadratica":
+          return `He resuelto tu ecuación cuadrática. Las soluciones son: x = ${datos[0]} y x = ${datos[1]}.`;
+        case "ecuacionCuadraticaDoble":
+          return `Esta ecuación tiene una única solución doble: x = ${datos}.`;
+        case "ecuacionSinSol":
+          return `Lo siento... esta ecuación no tiene solución real. 😕`;
+        case "desigualdadLineal":
+          return `La solución de tu desigualdad es: ${datos}`;
+        case "desigualdadCuadratica":
+          return `Resolviendo tu desigualdad cuadrática, encontré que: ${datos}`;
+        case "expresionNumerica":
+          return `Eso es solo una expresión. El resultado es: ${datos}`;
+        case "faltaOperador":
+          return `Parece que olvidaste escribir un signo de igualdad (=) o desigualdad (<, >, ≤, ≥).`;
+        case "error":
+          return `Ups... algo no salió bien. Revisa tu expresión.`;
+        default:
+          return `Hmm... no entendí tu entrada. ¿Podrías intentarlo de nuevo?`;
+      }
+    }
+  </script>
+
+</body>
+</html>
+
